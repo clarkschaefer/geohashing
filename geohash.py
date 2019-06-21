@@ -17,10 +17,10 @@ with open('alphavantage_api_key.txt') as api_keyfile:
 TODAYS_DATE = datetime.date.today()
 
 
-def get_recent_dji_details_on_date(api_key=AV_API_KEY,
-                                   request_date=TODAYS_DATE):
+def get_recent_dji_data_on_date(api_key=AV_API_KEY, request_date=TODAYS_DATE):
     '''
     Does the difficult part of getting most recent DJI opening.
+    Will eventually be replaced by separate functions for each task.
     '''
     params = {'apikey': api_key,
               'function': 'TIME_SERIES_DAILY',
@@ -31,16 +31,48 @@ def get_recent_dji_details_on_date(api_key=AV_API_KEY,
 
     day_gen = date_iterator(request_date)
     attempts = 0
-    dji_details = None
+    dji_data_oneday = None
 
-    while dji_details is None and attempts < 7:
+    while dji_data_oneday is None and attempts < 7:
         try:
             date = next(day_gen)
-            dji_details = time_series[date.isoformat()]
+            dji_data_oneday = time_series[date.isoformat()]
         except KeyError:
             pass
 
-    return dji_details
+    return dji_data_oneday
+
+
+def get_recent_dji_data(api_key=AV_API_KEY):
+    '''
+    Get the DJI data provided by AlphaVantage.
+    '''
+    params = {'apikey': api_key,
+              'function': 'TIME_SERIES_DAILY',
+              'symbol': "DJI"}
+    url = 'https://www.alphavantage.co/query?'
+    response = requests.get(url, params)
+    dji_data_json = response.json()['Time Series (Daily)']
+
+    return dji_data_json
+
+
+def get_dji_data_on_date(dji_data, request_date=TODAYS_DATE):
+    '''
+    Get the specific most recent opening, given a date.
+    '''
+    day_gen = date_iterator(request_date)
+    attempts = 0
+    dji_data_oneday = None
+
+    while dji_data_oneday is None and attempts < 7:
+        try:
+            date = next(day_gen)
+            dji_data_oneday = dji_data[date.isoformat()]
+        except KeyError:
+            pass
+
+    return dji_data_oneday
 
 
 def date_iterator(start_date=TODAYS_DATE,
@@ -83,7 +115,7 @@ def geohash(selected_date=TODAYS_DATE, dji_open=None,
             loc=get_latlong_by_ip()):
     '''
     Think from antigravity import geohash
-    but iike better or something.
+    but like better or something.
     '''
     loc = [trunc(s) for s in loc]
     hash_input = selected_date+'-'+str(round(dji_open, 2))
@@ -110,7 +142,7 @@ def main():
     prints all the regular useful information,
     and opens a webpage to that location.
     '''
-    dji_data = get_recent_dji_details_on_date()
+    dji_data = get_recent_dji_data_on_date()
     location = [trunc(s) for s in get_latlong_by_ip()]
 
     dji_open = round(float(get_first_matching_key(dji_data, "open")), 2)
