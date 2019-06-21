@@ -17,6 +17,18 @@ with open('alphavantage_api_key.txt') as api_keyfile:
 TODAYS_DATE = datetime.date.today()
 
 
+class NotYetAvailable(Exception):
+    """
+    Exception raised when DJI data isn't yet available for a day.
+
+    Attributes:
+        date -- date with unavailable data
+    """
+
+    def __init__(self, failure_date):
+        self.failure_date = failure_date
+
+
 def get_recent_dji_data_on_date(api_key=AV_API_KEY, request_date=TODAYS_DATE):
     '''
     Does the difficult part of getting most recent DJI opening.
@@ -43,7 +55,7 @@ def get_recent_dji_data_on_date(api_key=AV_API_KEY, request_date=TODAYS_DATE):
     return dji_data_oneday
 
 
-def get_recent_dji_data(api_key=AV_API_KEY):
+def get_dji_data(api_key=AV_API_KEY):
     '''
     Get the DJI data provided by AlphaVantage.
     '''
@@ -57,20 +69,25 @@ def get_recent_dji_data(api_key=AV_API_KEY):
     return dji_data_json
 
 
-def get_dji_data_on_date(dji_data, request_date=TODAYS_DATE):
+def select_dji_data_on_date(dji_data=get_dji_data(), request_date=TODAYS_DATE):
     '''
     Get the specific most recent opening, given a date.
+    Note that it doesn't always return the most up-to-date data,
+    and will only return the most recent DJI data. This means not weekends.
     '''
     day_gen = date_iterator(request_date)
     attempts = 0
     dji_data_oneday = None
 
     while dji_data_oneday is None and attempts < 7:
-        try:
-            date = next(day_gen)
-            dji_data_oneday = dji_data[date.isoformat()]
-        except KeyError:
+        date = next(day_gen)
+        if date.weekday() > 4:
             pass
+        else:
+            try:
+                dji_data_oneday = dji_data[date.isoformat()]
+            except KeyError:
+                pass
 
     return dji_data_oneday
 
@@ -80,6 +97,7 @@ def date_iterator(start_date=TODAYS_DATE,
     '''
     By default, starts counting backwards.
     You have been warned.
+    (I actually don't remember what I was warning about.)
     '''
     yielded_date = start_date
 
@@ -152,10 +170,12 @@ def main():
     print(location,
           TODAYS_DATE.isoformat()+'-'+str(dji_open),
           fractions,
-          goal_loc,)
+          goal_loc,
+          sep='\n')
 
-    webbrowser.open('https://www.google.com/maps/search/'
-                    + '+'.join([str(s) for s in goal_loc]) + '/')
+
+#    webbrowser.open('https://www.google.com/maps/search/'
+#                    + '+'.join([str(s) for s in goal_loc]) + '/')
 
 
 if __name__ == '__main__':
