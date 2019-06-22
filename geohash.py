@@ -30,32 +30,6 @@ class NotYetAvailable(Exception):
         self.failure_date = failure_date
 
 
-def get_recent_dji_data_on_date(api_key=AV_API_KEY, request_date=TODAYS_DATE):
-    '''
-    Does the difficult part of getting most recent DJI opening.
-    Will eventually be replaced by separate functions for each task.
-    '''
-    params = {'apikey': api_key,
-              'function': 'TIME_SERIES_DAILY',
-              'symbol': "DJI"}
-    url = 'https://www.alphavantage.co/query?'
-    response = requests.get(url, params)
-    time_series = response.json()['Time Series (Daily)']
-
-    day_gen = date_iterator(request_date)
-    attempts = 0
-    dji_data_oneday = None
-
-    while dji_data_oneday is None and attempts < 7:
-        try:
-            date = next(day_gen)
-            dji_data_oneday = time_series[date.isoformat()]
-        except KeyError:
-            pass
-
-    return dji_data_oneday
-
-
 def get_dji_data(api_key=AV_API_KEY):
     '''
     Get the DJI data provided by AlphaVantage.
@@ -176,7 +150,6 @@ def main():
           fractions,
           goal_loc,
           sep='\n')
-
 
 #    webbrowser.open('https://www.google.com/maps/search/'
 #                    + '+'.join([str(s) for s in goal_loc]) + '/')
