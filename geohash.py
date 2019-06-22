@@ -25,7 +25,8 @@ class NotYetAvailable(Exception):
         date -- date with unavailable data
     """
 
-    def __init__(self, failure_date):
+    def __init__(self, message, failure_date):
+        self.message = message
         self.failure_date = failure_date
 
 
@@ -69,7 +70,8 @@ def get_dji_data(api_key=AV_API_KEY):
     return dji_data_json
 
 
-def select_dji_data_on_date(dji_data=get_dji_data(), request_date=TODAYS_DATE):
+def select_dji_data_on_date(dji_data=get_dji_data(),
+                            request_date=TODAYS_DATE):
     '''
     Get the specific most recent opening, given a date.
     Note that it doesn't always return the most up-to-date data,
@@ -87,7 +89,8 @@ def select_dji_data_on_date(dji_data=get_dji_data(), request_date=TODAYS_DATE):
             try:
                 dji_data_oneday = dji_data[date.isoformat()]
             except KeyError:
-                pass
+                raise NotYetAvailable('DJI open data not available on',
+                                      TODAYS_DATE.isoformat())
 
     return dji_data_oneday
 
@@ -160,10 +163,11 @@ def main():
     prints all the regular useful information,
     and opens a webpage to that location.
     '''
-    dji_data = get_recent_dji_data_on_date()
+    dji_data = get_dji_data()
+    dji_data_oneday = select_dji_data_on_date(dji_data, TODAYS_DATE)
     location = [trunc(s) for s in get_latlong_by_ip()]
 
-    dji_open = round(float(get_first_matching_key(dji_data, "open")), 2)
+    dji_open = round(float(get_first_matching_key(dji_data_oneday, "open")), 2)
 
     goal_loc, fractions = geohash(TODAYS_DATE.isoformat(), dji_open, location)
 
