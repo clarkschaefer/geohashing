@@ -11,11 +11,12 @@ add better error messages
     this error is here, but I don't really know how exceptions work yet
 use literally anything other than alphavantage
     nothing yet, but it does mean implementing other data sources in the future
+    see geohashing wiki, geo.crox.net
 use more than ipinfo.io
     need to find some alternate geoip sources
 add a testing suite
-    python or shell script?
-    probably python so that it can be tested platform independent
+    have a shell script to do this now
+    still need a native python one
 verify platform independence
     ez, maybe
 automatic API key generation and storage

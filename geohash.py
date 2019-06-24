@@ -6,12 +6,13 @@ Created on Tue Jun  4 15:18:03 2019
 """
 import argparse
 import datetime
-import dateutil.parser
 import hashlib
-# import webbrowser
+import webbrowser
 
 from math import trunc
 
+
+import dateutil.parser
 import requests
 
 with open('alphavantage_api_key.txt') as api_keyfile:
@@ -47,7 +48,7 @@ def get_av_dji_data(api_key=AV_API_KEY):
     return dji_data_json
 
 
-def select_dji_data_on_date(dji_data, request_date=TODAYS_DATE):
+def select_av_dji_data_on_date(dji_data, request_date=TODAYS_DATE):
     '''
     Get the specific most recent opening, given a date.
     Note that it doesn't always return the most up-to-date data,
@@ -59,7 +60,6 @@ def select_dji_data_on_date(dji_data, request_date=TODAYS_DATE):
 
     while dji_data_oneday is None and attempts < 7:
         selected_date = next(day_gen)
-        print(selected_date)
         if selected_date.weekday() > 4:
             pass
         else:
@@ -111,6 +111,11 @@ def get_first_matching_key(search_dictionary, search_key):
 
 
 def two_decimal_places(number_string):
+    '''
+    Does ugly things to get a two-decimal-place float.
+    Also probably doesn't work quite right,
+    I need to adjust how I'm passing along the DJI open.
+    '''
     return trunc(float(number_string)*100)/100
 
 
@@ -154,34 +159,55 @@ def main(args):
         date = dateutil.parser.parse(args.date).date()
 
     if args.dji_open is None:
-        dji_data = get_av_dji_data()
-        dji_data_oneday = select_dji_data_on_date(dji_data, date)
+        if args.source == 'av':
+            pass  # will eventually contain original alphavantage method
 
-        dji_open = get_first_matching_key(dji_data_oneday, "open")
+        elif args.source == 'crox':
+            pass  # this will eventually be a default using geo.crox.net
+
+        else:  # Default source, will eventually be geo.crox.net
+            av_data = get_av_dji_data()
+
+            av_data_oneday = select_av_dji_data_on_date(av_data, date)
+
+            av_dji_open_raw = get_first_matching_key(av_data_oneday, 'open')
+
+            dji_open = two_decimal_places(av_dji_open_raw)
     else:
         dji_open = two_decimal_places(args.dji_open)
 
     goal_loc, fractions, hash_input = geohash(location, date, dji_open)
 
-    print(location,
-          hash_input,
-          fractions,
+    print(hash_input,
           goal_loc,
           sep='\n')
 
-#    webbrowser.open('https://www.google.com/maps/search/'
-#                    + '+'.join([str(s) for s in goal_loc]) + '/')
+    if args.browser:
+        print('Opening browser...')
+        webbrowser.open('https://www.google.com/maps/search/'
+                        + '+'.join([str(s) for s in goal_loc]) + '/')
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--location', '-l', nargs=2,
+    PARSER = argparse.ArgumentParser()
+
+    PARSER.add_argument('--location', '-l', nargs=2,
                         metavar=('LAT', 'LONG'),
                         help='Current latitude and longitude')
-    parser.add_argument('--date', '-d', metavar='DATE',
+    PARSER.add_argument('--date', '-d', metavar='DATE',
                         help='''Date of desired geohash.
                                 Right now only works for last 100 days''')
-    parser.add_argument('--dji-open',
-                        help='Specify a DJI open if you like.')
-    args = parser.parse_args()
-    main(args)
+    PARSER.add_argument('--dji-open',
+                        help='Specify a DJI open')
+    PARSER.add_argument('--browser', '-b', action='store_true',
+                        help='Open result in a browser')
+    PARSER.add_argument('--source', '-s',
+                        help='''
+                        Select source of DJIA\n
+                        Unset = geo.crox.net
+                        'av'  = AlphaVantage
+                        ''')
+
+    ARGS = PARSER.parse_args()
+
+    main(ARGS)
