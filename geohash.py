@@ -157,7 +157,7 @@ def main(args):
         dji_open = round(float(get_first_matching_key(dji_data_oneday,
                                                       "open")), 2)
     else:
-        dji_open = args.dji_open
+        dji_open = int(args.dji_open)
 
     goal_loc, fractions = geohash(location, date, dji_open)
 
