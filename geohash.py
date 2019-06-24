@@ -32,7 +32,7 @@ class NotYetAvailable(Exception):
         self.failure_date = failure_date
 
 
-def get_dji_data(api_key=AV_API_KEY):
+def get_av_dji_data(api_key=AV_API_KEY):
     '''
     Get the DJI data provided by AlphaVantage.
     '''
@@ -110,13 +110,16 @@ def get_first_matching_key(search_dictionary, search_key):
     return desired_value
 
 
+def two_decimal_places(number_string):
+    return trunc(float(number_string)*100)/100
+
+
 def geohash(location, selected_date=TODAYS_DATE, dji_open=None):
     '''
-    Think from antigravity import geohash
-    but like better or something.
+    Think from antigravity import geohash but like better or something.
     '''
     location = [trunc(int(f)) for f in location]
-    hash_input = '-'.join([selected_date.isoformat(), str(round(dji_open, 2))])
+    hash_input = '-'.join([selected_date.isoformat(), str(dji_open)])
     hash_output = hashlib.md5(bytes(hash_input, 'utf-8'))
     hex_output = hash_output.hexdigest()
 
@@ -126,7 +129,7 @@ def geohash(location, selected_date=TODAYS_DATE, dji_open=None):
     final_loc = [location[0] + fractions[0] * location[0] / abs(location[0]),
                  location[1] + fractions[1] * location[1] / abs(location[1])]
 
-    return final_loc, fractions
+    return final_loc, fractions, hash_input
 
 
 def main(args):
@@ -151,18 +154,17 @@ def main(args):
         date = dateutil.parser.parse(args.date).date()
 
     if args.dji_open is None:
-        dji_data = get_dji_data()
+        dji_data = get_av_dji_data()
         dji_data_oneday = select_dji_data_on_date(dji_data, date)
 
-        dji_open = round(float(get_first_matching_key(dji_data_oneday,
-                                                      "open")), 2)
+        dji_open = get_first_matching_key(dji_data_oneday, "open")
     else:
-        dji_open = int(args.dji_open)
+        dji_open = two_decimal_places(args.dji_open)
 
-    goal_loc, fractions = geohash(location, date, dji_open)
+    goal_loc, fractions, hash_input = geohash(location, date, dji_open)
 
     print(location,
-          date.isoformat()+'-'+str(dji_open),
+          hash_input,
           fractions,
           goal_loc,
           sep='\n')
