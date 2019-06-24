@@ -12,6 +12,9 @@ add better error messages
 use literally anything other than alphavantage
     nothing yet, but it does mean implementing other data sources in the future
     see geohashing wiki, geo.crox.net
+    might want to break these out into separate submodules at some point
+    then call av.get_data and av.select_data then crox.get_data
+    good excuse to make this a module
 use more than ipinfo.io
     need to find some alternate geoip sources
 add a testing suite
