@@ -25,12 +25,14 @@ class NotYetAvailable(Exception):
     Exception raised when DJI data isn't yet available for a day.
 
     Attributes:
-        date -- date with unavailable data
+        failure_date -- date with unavailable data
+        message
     """
 
     def __init__(self, message, failure_date):
         self.message = message
         self.failure_date = failure_date
+        Exception.__init__(self, ' '.join([self.message, self.failure_date]))
 
 
 def get_av_dji_data(api_key=AV_API_KEY):
@@ -54,7 +56,7 @@ def select_av_dji_data_on_date(dji_data, request_date=TODAYS_DATE):
     Note that it doesn't always return the most up-to-date data,
     and will only return the most recent DJI data. This means not weekends.
     '''
-    day_gen = date_iterator(request_date)
+    day_gen = _date_iterator(request_date)
     attempts = 0
     dji_data_oneday = None
 
@@ -66,13 +68,13 @@ def select_av_dji_data_on_date(dji_data, request_date=TODAYS_DATE):
             try:
                 dji_data_oneday = dji_data[selected_date.isoformat()]
             except KeyError:
-                raise NotYetAvailable('DJI open data not available on',
+                raise NotYetAvailable('DJI open data not yet available on',
                                       selected_date.isoformat())
 
     return dji_data_oneday
 
 
-def date_iterator(start_date=TODAYS_DATE,
+def _date_iterator(start_date=TODAYS_DATE,
                   time_change=datetime.timedelta(days=-1)):
     '''
     By default, starts counting backwards.
@@ -100,7 +102,7 @@ def get_latlong_by_ip():
     return loc
 
 
-def get_first_matching_key(search_dictionary, search_key):
+def _get_first_matching_key(search_dictionary, search_key):
     '''
     Bullshit way to get around unordered dicts in JSON responses.
     Again, only exists because I suck and haven't found a better way.
@@ -110,7 +112,7 @@ def get_first_matching_key(search_dictionary, search_key):
     return desired_value
 
 
-def two_decimal_places(number_string):
+def _two_decimal_places(number_string):
     '''
     Does ugly things to get a two-decimal-place float.
     Also probably doesn't work quite right,
@@ -137,7 +139,7 @@ def geohash(location, selected_date=TODAYS_DATE, dji_open=None):
     return final_loc, fractions, hash_input
 
 
-def main(args):
+def main():
     '''
     At runtime, goes and finds the most recent DJI open.
     Then, gets your approximate location from your IP,
@@ -148,6 +150,28 @@ def main(args):
     prints all the regular useful information,
     and opens a webpage to that location.
     '''
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--location', '-l', nargs=2,
+                        metavar=('LAT', 'LONG'),
+                        help='Current latitude and longitude')
+    parser.add_argument('--date', '-d', metavar='DATE',
+                        help='''Date of desired geohash.
+                                Right now only works for last 100 days''')
+    parser.add_argument('--dji-open',
+                        help='Specify a DJI open')
+    parser.add_argument('--browser', '-b', action='store_true',
+                        help='Open result in a browser')
+    parser.add_argument('--source', '-s',
+                        help='''
+                        Select source of DJIA\n
+                        Unset = geo.crox.net\n
+                        'crox' = geo.crox.net\n
+                        'av'  = AlphaVantage
+                        ''')
+
+    args = parser.parse_args()
+
     if args.location is None:
         location = [trunc(s) for s in get_latlong_by_ip()]
     else:
@@ -170,11 +194,11 @@ def main(args):
 
             av_data_oneday = select_av_dji_data_on_date(av_data, date)
 
-            av_dji_open_raw = get_first_matching_key(av_data_oneday, 'open')
+            av_dji_open_raw = _get_first_matching_key(av_data_oneday, 'open')
 
-            dji_open = two_decimal_places(av_dji_open_raw)
+            dji_open = _two_decimal_places(av_dji_open_raw)
     else:
-        dji_open = two_decimal_places(args.dji_open)
+        dji_open = _two_decimal_places(args.dji_open)
 
     goal_loc, fractions, hash_input = geohash(location, date, dji_open)
 
@@ -189,25 +213,4 @@ def main(args):
 
 
 if __name__ == '__main__':
-    PARSER = argparse.ArgumentParser()
-
-    PARSER.add_argument('--location', '-l', nargs=2,
-                        metavar=('LAT', 'LONG'),
-                        help='Current latitude and longitude')
-    PARSER.add_argument('--date', '-d', metavar='DATE',
-                        help='''Date of desired geohash.
-                                Right now only works for last 100 days''')
-    PARSER.add_argument('--dji-open',
-                        help='Specify a DJI open')
-    PARSER.add_argument('--browser', '-b', action='store_true',
-                        help='Open result in a browser')
-    PARSER.add_argument('--source', '-s',
-                        help='''
-                        Select source of DJIA\n
-                        Unset = geo.crox.net
-                        'av'  = AlphaVantage
-                        ''')
-
-    ARGS = PARSER.parse_args()
-
-    main(ARGS)
+    main()
