@@ -1,4 +1,4 @@
 alphavantage_api_key.txt
-.__pycache__/*
-.spyproject/*
-.venv/*
+.__pycache__
+.spyproject
+.venv
