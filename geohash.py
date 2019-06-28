@@ -35,6 +35,18 @@ class NotYetAvailable(Exception):
         Exception.__init__(self, ' '.join([self.message, self.failure_date]))
 
 
+def get_crox_dji_data(request_date=TODAYS_DATE):
+    '''
+    Get the most commonly referenced DJI open from geo.crox.net
+    '''
+    url = ''.join(['http://geo.crox.net/djia/',
+                   request_date.isoformat().replace('-', '/')])
+
+    response = requests.get(url)
+
+    return response.text
+
+
 def get_av_dji_data(api_key=AV_API_KEY):
     '''
     Get the DJI data provided by AlphaVantage.
@@ -55,6 +67,7 @@ def select_av_dji_data_on_date(dji_data, request_date=TODAYS_DATE):
     Get the specific most recent opening, given a date.
     Note that it doesn't always return the most up-to-date data,
     and will only return the most recent DJI data. This means not weekends.
+    Also throws an error if you run the code before the DJIA opens.
     '''
     day_gen = _date_iterator(request_date)
     attempts = 0
@@ -92,6 +105,8 @@ def get_latlong_by_ip():
     '''
     What it says on the tin.
     This only exists so that I can make it look neater down below.
+    In the future there may be more implementations of this,
+    and I'll stuff them all into their own submodule.
     '''
     url = 'http://ipinfo.io/json'
 
@@ -124,9 +139,12 @@ def _two_decimal_places(number_string):
 def geohash(location, selected_date=TODAYS_DATE, dji_open=None):
     '''
     Think from antigravity import geohash but like better or something.
+    Location is an iterable lat/long coordinate pair, tuple/list/etc.
+    selected_date is a datetime.date object
+    dji_open should be the matched DJIA open as a string with two decimals
     '''
-    location = [trunc(int(f)) for f in location]
-    hash_input = '-'.join([selected_date.isoformat(), str(dji_open)])
+    location = [trunc(int(float(f))) for f in location]
+    hash_input = '-'.join([selected_date.isoformat(), dji_open])
     hash_output = hashlib.md5(bytes(hash_input, 'utf-8'))
     hex_output = hash_output.hexdigest()
 
@@ -183,13 +201,7 @@ def main():
         date = dateutil.parser.parse(args.date).date()
 
     if args.dji_open is None:
-        if args.source == 'av':
-            pass  # will eventually contain original alphavantage method
-
-        elif args.source == 'crox':
-            pass  # this will eventually be a default using geo.crox.net
-
-        else:  # Default source, will eventually be geo.crox.net
+        if args.source == 'av':  # Originally implemented data source
             av_data = get_av_dji_data()
 
             av_data_oneday = select_av_dji_data_on_date(av_data, date)
@@ -197,6 +209,10 @@ def main():
             av_dji_open_raw = _get_first_matching_key(av_data_oneday, 'open')
 
             dji_open = _two_decimal_places(av_dji_open_raw)
+
+        elif args.source == 'crox' or args.source is None:
+            dji_open = get_crox_dji_data()  # Default data source
+
     else:
         dji_open = _two_decimal_places(args.dji_open)
 
