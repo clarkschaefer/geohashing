@@ -75,7 +75,7 @@ def select_av_dji_data_on_date(dji_data, request_date=TODAYS_DATE):
 
 
 def _date_iterator(start_date=TODAYS_DATE,
-                  time_change=datetime.timedelta(days=-1)):
+                   time_change=datetime.timedelta(days=-1)):
     '''
     By default, starts counting backwards.
     You have been warned.
@@ -200,7 +200,7 @@ def main():
     else:
         dji_open = _two_decimal_places(args.dji_open)
 
-    goal_loc, fractions, hash_input = geohash(location, date, dji_open)
+    goal_loc, _, hash_input = geohash(location, date, dji_open)
 
     print(hash_input,
           goal_loc,
