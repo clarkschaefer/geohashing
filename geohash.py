@@ -15,9 +15,8 @@ from math import trunc
 import dateutil.parser
 import requests
 
-with open('alphavantage_api_key.txt') as api_keyfile:
-    AV_API_KEY = api_keyfile.read().strip()
 TODAYS_DATE = datetime.date.today()
+CHANGE_DATE_30W = datetime.date(2008,5,26)
 
 
 class NotYetAvailable(Exception):
@@ -35,7 +34,7 @@ class NotYetAvailable(Exception):
         Exception.__init__(self, ' '.join([self.message, self.failure_date]))
 
 
-def get_crox_dji_data(request_date=TODAYS_DATE):
+def get_crox_dji_data(request_date):
     '''
     Get the most commonly referenced DJI open from geo.crox.net
     '''
@@ -47,7 +46,7 @@ def get_crox_dji_data(request_date=TODAYS_DATE):
     return response.text
 
 
-def get_av_dji_data(api_key=AV_API_KEY):
+def get_av_dji_data(api_key):
     '''
     Get the DJI data provided by AlphaVantage.
     '''
@@ -101,14 +100,19 @@ def _date_iterator(start_date=TODAYS_DATE,
         yielded_date += time_change
 
 
-def get_latlong_by_ip():
+def get_latlong_by_ip(ip=None):
     '''
     What it says on the tin.
     This only exists so that I can make it look neater down below.
     In the future there may be more implementations of this,
     and I'll stuff them all into their own submodule.
     '''
-    url = 'http://ipinfo.io/json'
+    if ip is None:
+        payload = '/json'
+    else:
+        payload = '/' + ip + '/json'
+
+    url = 'http://ipinfo.io' + payload
 
     response = requests.get(url)
 
@@ -190,19 +194,26 @@ def main():
 
     args = parser.parse_args()
 
-    if args.location is None:
+    if args.location is None:  # get location by IP or provided
         location = [trunc(s) for s in get_latlong_by_ip()]
     else:
         location = args.location
 
-    if args.date is None:
+    if args.date is None:  # Get date, automatically or provided
         date = TODAYS_DATE
     else:
         date = dateutil.parser.parse(args.date).date()
 
+    # East of 30W and in 30W rule era
+    if location[1] > -30 and date > CHANGE_DATE_30W:
+        date -= datetime.timedelta(days=1)
+
     if args.dji_open is None:
         if args.source == 'av':  # Originally implemented data source
-            av_data = get_av_dji_data()
+            with open('alphavantage_api_key.txt') as api_keyfile:
+                av_api_key = api_keyfile.read().strip()
+
+            av_data = get_av_dji_data(av_api_key)
 
             av_data_oneday = select_av_dji_data_on_date(av_data, date)
 
@@ -211,7 +222,7 @@ def main():
             dji_open = _two_decimal_places(av_dji_open_raw)
 
         elif args.source == 'crox' or args.source is None:
-            dji_open = get_crox_dji_data()  # Default data source
+            dji_open = get_crox_dji_data(date)  # Default data source
 
     else:
         dji_open = _two_decimal_places(args.dji_open)
